@@ -1,154 +1,164 @@
 (() => {
-  const root = window.PORTFOLIO_CONTENT;
-  if (!root) return;
+  const data = window.PORTFOLIO_CONTENT;
+  if (!data) return;
 
-  const setText = (id, value) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value ?? '';
-  };
+  const byId = id => document.getElementById(id);
 
-  const heroTitle = document.getElementById('hero-title');
-  if (heroTitle) heroTitle.innerHTML = root.hero.titleHtml;
-  setText('hero-lead', root.hero.lead);
+  const heroTitle = byId('hero-title');
+  heroTitle.innerHTML = data.hero.titleHtml;
+  byId('hero-lead').textContent = data.hero.lead;
 
-  const pills = document.getElementById('hero-pills');
-  if (pills) {
-    pills.innerHTML = '';
-    root.hero.pills.forEach(text => {
-      const span = document.createElement('span');
-      span.className = 'pill';
-      span.textContent = text;
-      pills.appendChild(span);
-    });
-  }
+  data.hero.pills.forEach(label => {
+    const span = document.createElement('span');
+    span.className = 'hero-pill';
+    span.textContent = label;
+    byId('hero-pills').appendChild(span);
+  });
 
-  const strengths = document.getElementById('strengths-list');
-  if (strengths) {
-    strengths.innerHTML = '';
-    root.strengths.forEach((item, i) => {
-      const article = document.createElement('article');
-      article.className = 'strength';
-      article.innerHTML = `
-        <div class="icon i${Math.min(i + 1, 3)}">${item.number}</div>
-        <h3>${item.title}</h3>
-        <p>${item.description}</p>`;
-      strengths.appendChild(article);
-    });
-  }
+  data.strengths.forEach(item => {
+    const article = document.createElement('article');
+    article.className = 'strength-card';
 
-  const workProcess = document.getElementById('work-process');
-  if (workProcess) {
-    workProcess.innerHTML = '';
-    root.work.process.forEach(item => {
-      const article = document.createElement('article');
-      article.className = 'step';
-      article.innerHTML = `<small>${item.step}</small><strong>${item.title}</strong><p>${item.description}</p>`;
-      workProcess.appendChild(article);
-    });
-  }
+    const index = document.createElement('div');
+    index.className = 'strength-index';
+    index.textContent = item.number;
 
-  setText('sample-input', root.work.sampleInput);
-  setText('sample-output', root.work.sampleOutput);
-  const sampleBody = document.getElementById('sample-table-body');
-  if (sampleBody) {
-    sampleBody.innerHTML = '';
-    root.work.sampleRows.forEach(row => {
-      const tr = document.createElement('tr');
-      row.forEach(cell => {
-        const td = document.createElement('td');
-        td.textContent = cell;
-        tr.appendChild(td);
-      });
-      sampleBody.appendChild(tr);
-    });
-  }
+    const icon = document.createElement('div');
+    icon.className = 'strength-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = item.icon;
 
-  setText('llm-intro', root.llm.intro);
-  const llmProcess = document.getElementById('llm-process');
-  if (llmProcess) {
-    llmProcess.innerHTML = '';
-    root.llm.process.forEach(item => {
-      const article = document.createElement('article');
-      article.className = 'step';
-      article.innerHTML = `<small>${item.step}</small><strong>${item.title}</strong><p>${item.description}</p>`;
-      llmProcess.appendChild(article);
-    });
-  }
+    const title = document.createElement('h3');
+    title.textContent = item.title;
 
-  const issuesBody = document.getElementById('llm-issues-body');
-  if (issuesBody) {
-    issuesBody.innerHTML = '';
-    root.llm.issues.forEach(row => {
-      const tr = document.createElement('tr');
-      row.forEach(cell => {
-        const td = document.createElement('td');
-        td.textContent = cell;
-        tr.appendChild(td);
-      });
-      issuesBody.appendChild(tr);
-    });
-  }
+    const accent = document.createElement('span');
+    accent.className = 'card-accent';
+    accent.setAttribute('aria-hidden', 'true');
 
-  setText('llm-input', root.llm.input);
-  setText('llm-inference', root.llm.inference);
-  setText('llm-output', root.llm.output);
-  setText('perf-before', root.llm.performanceBefore);
-  setText('perf-after', root.llm.performanceAfter);
-  setText('llm-summary', root.llm.summary);
+    const desc = document.createElement('p');
+    desc.textContent = item.description;
 
-  const expList = document.getElementById('experience-list');
-  if (expList) {
-    expList.innerHTML = '';
-    root.experience.forEach(item => {
-      const article = document.createElement('article');
-      article.className = 'experience';
-      article.innerHTML = `<div class="date">${item.date}</div><div><h3>${item.title}</h3><p>${item.description}</p></div>`;
-      expList.appendChild(article);
-    });
-  }
-
-  const renderList = (id, items) => {
-    const ul = document.getElementById(id);
-    if (!ul) return;
-    ul.innerHTML = '';
-    items.forEach(item => {
+    const example = document.createElement('div');
+    example.className = 'strength-example';
+    const exampleLabel = document.createElement('strong');
+    exampleLabel.textContent = 'EXAMPLE';
+    const ul = document.createElement('ul');
+    item.examples.forEach(text => {
       const li = document.createElement('li');
-      li.textContent = item;
+      li.textContent = text;
       ul.appendChild(li);
     });
-  };
-  renderList('public-list', root.scope.public);
-  renderList('private-list', root.scope.private);
+    example.append(exampleLabel, ul);
 
-  const tabs = [...document.querySelectorAll('.tab')];
-  const panels = {
-    'tab-process': document.getElementById('process-panel'),
-    'tab-result': document.getElementById('result-panel'),
-    'tab-llm': document.getElementById('llm-panel')
+    article.append(index, icon, title, accent, desc, example);
+    byId('strengths-list').appendChild(article);
+  });
+
+  const renderProcess = (targetId, items) => {
+    const target = byId(targetId);
+    items.forEach(item => {
+      const article = document.createElement('article');
+      article.className = 'process-card';
+
+      const step = document.createElement('small');
+      step.textContent = item.step;
+      const title = document.createElement('strong');
+      title.textContent = item.title;
+      const desc = document.createElement('p');
+      desc.textContent = item.description;
+
+      article.append(step, title, desc);
+      target.appendChild(article);
+    });
   };
-  function activate(id){
-    tabs.forEach(t => {
-      const active = t.id === id;
-      t.setAttribute('aria-selected', String(active));
-      const panel = panels[t.id];
-      if (panel) {
-        panel.classList.toggle('active', active);
-        panel.hidden = !active;
-      }
+
+  renderProcess('work-process', data.work.process);
+  renderProcess('llm-process', data.llm.process);
+
+  byId('sample-input').textContent = data.work.sampleInput;
+  byId('sample-output').textContent = data.work.sampleOutput;
+
+  data.work.sampleRows.forEach(row => {
+    const tr = document.createElement('tr');
+    row.forEach(value => {
+      const td = document.createElement('td');
+      td.textContent = value;
+      tr.appendChild(td);
+    });
+    byId('sample-table-body').appendChild(tr);
+  });
+
+  byId('llm-intro').textContent = data.llm.intro;
+  byId('llm-input').textContent = data.llm.input;
+  byId('llm-inference').textContent = data.llm.inference;
+  byId('llm-output').textContent = data.llm.output;
+  byId('perf-before').textContent = data.llm.performanceBefore;
+  byId('perf-after').textContent = data.llm.performanceAfter;
+  byId('llm-summary').textContent = data.llm.summary;
+
+  data.llm.issues.forEach(row => {
+    const tr = document.createElement('tr');
+    row.forEach(value => {
+      const td = document.createElement('td');
+      td.textContent = value;
+      tr.appendChild(td);
+    });
+    byId('llm-issues-body').appendChild(tr);
+  });
+
+  data.experience.forEach(item => {
+    const article = document.createElement('article');
+    article.className = 'experience-item';
+
+    const date = document.createElement('div');
+    date.className = 'experience-date';
+    date.textContent = item.date;
+
+    const body = document.createElement('div');
+    const title = document.createElement('h3');
+    title.textContent = item.title;
+    const desc = document.createElement('p');
+    desc.textContent = item.description;
+    body.append(title, desc);
+
+    article.append(date, body);
+    byId('experience-list').appendChild(article);
+  });
+
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  const panelByTab = new Map([
+    ['tab-process', byId('panel-process')],
+    ['tab-result', byId('panel-result')],
+    ['tab-llm', byId('panel-llm')]
+  ]);
+
+  function activateTab(tab) {
+    tabs.forEach(item => {
+      const selected = item === tab;
+      item.classList.toggle('is-active', selected);
+      item.setAttribute('aria-selected', String(selected));
+      item.tabIndex = selected ? 0 : -1;
+      const panel = panelByTab.get(item.id);
+      panel.hidden = !selected;
+      panel.classList.toggle('is-active', selected);
     });
   }
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => activate(tab.id));
-    tab.addEventListener('keydown', e => {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        e.preventDefault();
-        const idx = tabs.indexOf(tab);
-        const next = e.key === 'ArrowRight'
-          ? (idx + 1) % tabs.length
-          : (idx - 1 + tabs.length) % tabs.length;
-        tabs[next].focus();
-        activate(tabs[next].id);
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => activateTab(tab));
+    tab.addEventListener('keydown', event => {
+      let nextIndex = null;
+      if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+      if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === 'Home') nextIndex = 0;
+      if (event.key === 'End') nextIndex = tabs.length - 1;
+      if (nextIndex !== null) {
+        event.preventDefault();
+        tabs[nextIndex].focus();
+        activateTab(tabs[nextIndex]);
       }
     });
   });
+
+  activateTab(tabs[0]);
 })();
