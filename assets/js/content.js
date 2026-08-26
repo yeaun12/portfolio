@@ -29,23 +29,23 @@ window.PORTFOLIO_CONTENT = {
     },
     {
       number: '03',
-      title: '필요한 기술을 적용해 개선합니다',
+      title: '문제를 끝까지 해결합니다',
       icon: '<span class="icon-code">&lt;/&gt;</span>',
-      description: '새로운 기술이 필요한 상황에서는 직접 적용하고, 실제 실행 환경에서 발생하는 제약과 오류를 해결하며 개선합니다.',
+      description: '예상하지 못한 제약이나 오류가 발생해도 원인을 확인하고 실행 가능한 방법을 찾아 최종 결과까지 연결합니다.',
       examples: [
-        'LLaMA 3.1 8B + vLLM 추론 환경 구성',
-        'GPU 환경 전환 과정의 실행 문제 해결',
-        '배치 최적화로 추론 처리 속도 개선'
+        'GPU 환경 변경에 따른 LLM 실행 문제 해결',
+        '추론 환경 및 배치 처리 방식 개선',
+        '모델 추론부터 후처리·결과 추출까지 완료'
       ]
     }
   ],
   work: {
     process: [
-      { step: '01', title: '데이터 입력', description: '일별로 수집된 온라인 가격 데이터를 불러와 처리 대상을 구성.' },
-      { step: '02', title: '월 단위 데이터 구성', description: '여러 일자의 데이터를 월 단위로 병합하고 품목 정보를 연결.' },
-      { step: '03', title: '상품 정보 정제', description: '상품명에서 g·kg·ml·L·개·팩·봉 등의 단위 정보를 찾아 규칙에 맞게 정리하고 비교 가능한 형태로 변환.' },
-      { step: '04', title: '가격 데이터 검증', description: '가격 관련 값을 점검하고 품목별 그룹 기준으로 이상치를 확인.' },
-      { step: '05', title: '결과 자동 생성', description: '처리 결과를 정해진 형태의 Excel 파일로 자동 생성.' }
+      { step: '01', title: '데이터 입력', description: '일별로 수집된 온라인 가격 데이터를 불러와 처리 대상을 구성' },
+      { step: '02', title: '월 단위 데이터 구성', description: '여러 일자의 데이터를 월 단위로 병합하고 품목 정보를 연결' },
+      { step: '03', title: '상품 정보 정제', description: '상품명에서 g·kg·ml·L·개·팩·봉 등의 단위 정보를 찾아 규칙에 맞게 정리하고 비교 가능한 형태로 변환' },
+      { step: '04', title: '가격 데이터 검증', description: '가격 관련 값을 점검하고 품목별 그룹 기준으로 이상치를 확인' },
+      { step: '05', title: '결과 자동 생성', description: '처리 결과를 정해진 형태의 Excel 파일로 자동 생성' }
     ],
     sampleInput: '입력 폴더 · sample_daily_data/',
     sampleOutput: '출력 파일 · monthly_result.xlsx',
@@ -57,36 +57,35 @@ window.PORTFOLIO_CONTENT = {
     ]
   },
   llm: {
-    intro: 'LLaMA 3.1 8B를 vLLM으로 실행하는 과정에서 GPU 환경 변화로 발생한 문제를 확인하고 실행 조건과 처리 방식을 조정했습니다.',
+    intro: 'LLaMA 3.1 8B와 vLLM을 활용해 입력 데이터를 추론하고, 후처리를 거쳐 최종 결과를 생성하는 흐름을 구성했습니다. GPU 환경 변경 과정에서 발생한 제약은 실행 조건과 배치 처리 방식을 조정해 해결했습니다.',
     process: [
-      { step: '01 · START', title: '추론 환경 구성', description: 'LLaMA 3.1 8B와 vLLM을 활용해 대량 추론 환경을 구성.' },
-      { step: '02 · CHANGE', title: 'GPU 환경 전환', description: 'A100에서 V100 환경으로 변경되며 실행 조건 차이를 확인.' },
-      { step: '03 · ISSUE', title: '호환성·메모리 문제', description: 'bfloat16 미지원, OOM 등 GPU 제약과 실행 오류 발생.' },
-      { step: '04 · SOLVE', title: '실행 조건 조정', description: 'fp16 적용, GPU 메모리 설정 조정과 실행 환경 호환성 점검.' },
-      { step: '05 · OPTIMIZE', title: '배치 추론 개선', description: '단건 처리에서 배치 처리 중심으로 실행 구조를 개선.' }
+      { step: '01 · INPUT', title: '입력 데이터 구성', description: '추론 대상 데이터를 JSON 형태로 구성.' },
+      { step: '02 · SETUP', title: '추론 환경 구성', description: 'LLaMA 3.1 8B와 vLLM 기반 실행 환경 구성.' },
+      { step: '03 · INFERENCE', title: '모델 추론', description: '배치 단위로 데이터를 입력해 모델 추론 수행.' },
+      { step: '04 · POST', title: '후처리', description: '추론 결과를 필요한 형태로 정리하고 후처리.' },
+      { step: '05 · OUTPUT', title: '결과 추출', description: '후처리된 결과를 최종 데이터로 저장·추출.' }
     ],
     issues: [
-      ['V100에서 bfloat16 미지원', 'dtype을 fp16으로 변경'],
-      ['GPU 메모리 부족 / OOM', '메모리 사용 조건과 실행 설정 조정'],
-      ['Engine 초기화 및 실행 오류', '가용 VRAM과 실행 환경 설정 점검'],
-      ['tokenizer 등 호환성 문제', '모델·tokenizer 및 환경 구성 확인'],
-      ['단건 추론 처리 속도 저하', '배치 처리 중심으로 추론 방식 개선']
+      ['GPU 환경 변경', 'A100에서 V100으로 전환되며 실행 조건 차이 확인'],
+      ['dtype 호환성', 'V100 환경에 맞춰 bf16 대신 fp16 적용'],
+      ['GPU 메모리 제약', '메모리 사용 설정과 실행 조건 조정'],
+      ['처리 속도 저하', '단건 중심 처리에서 배치 처리 방식으로 개선']
     ],
     input: 'JSON 형태의 입력 데이터',
-    inference: 'LLaMA 3.1 8B · vLLM · Batch Processing',
-    output: '모델 추론 결과 저장',
+    inference: 'LLaMA 3.1 8B · vLLM · Batch Inference',
+    output: '후처리된 최종 결과 데이터',
     performanceBefore: '약 12초 / 건',
     performanceAfter: '평균 약 0.04초 / 건',
-    summary: '제한된 GPU 환경에서 LLM 추론 환경을 구성하고 오류 원인을 확인하며 실행 방식과 처리 성능을 개선한 경험입니다.'
+    summary: '환경 오류 해결 자체에 그치지 않고, 추론 환경을 안정화한 뒤 모델 추론과 후처리를 거쳐 최종 결과를 추출하는 과정까지 완료했습니다.'
   },
   experience: [
     {
       date: '2024.06 — 2024.12',
       title: '사회통계 관련 업무',
-      description: '저출생 관련 지표 자료 정리와 육아휴직통계 검증 업무를 수행했습니다.'
+      description: '저출생 관련 지표 관련 데이터 분석과 육아휴직통계 검증 업무를 수행했습니다.'
     },
     {
-      date: '2025',
+      date: '2025.01 — 2025.11',
       title: '온라인 가격 데이터 관련 업무',
       description: 'Python 기반 데이터 정제·전처리 자동화, Excel 결과 출력, LLM 활용 및 내부용 GUI 제작 업무를 수행했습니다.'
     }
