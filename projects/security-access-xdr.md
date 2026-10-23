@@ -1,0 +1,131 @@
+# 보안 접근 통제 · XDR 경보 분석
+
+**사용자·기기·자원별 접근 권한을 확인하고, 보안 경보를 차단·검토·기록으로 구분하는 교육 프로젝트입니다.**
+
+ALEPH 교육의 제공 애플리케이션과 인터페이스를 기반으로, 접근 판정 규칙·보호 API·기기 서명 검증·XDR 경보 분류 및 테스트를 구현했습니다. 정상 사용자의 이용을 유지하면서 권한 없는 요청과 공격 징후를 구분하는 데 집중했습니다.
+
+| 구분 | 내용 |
+| --- | --- |
+| 수행 기간 | 2026년 10월 |
+| 프로젝트 형태 | ALEPH 교육 내 보안 실습 · AI 협업 개발 |
+| 핵심 기술 | JavaScript, Node.js, HTTP API, Supabase/PostgreSQL, WebAuthn, PWA, Vercel |
+| 구현 영역 | 접근 판정, 사용자별 자료 보호, 기기 등록·서명, 보안 경보 분류, 사건 요약 화면 |
+| 검증 방법 | 단위·회귀 테스트, 합성 경보 재현, 브라우저 동작 확인, 교육 과제 평가 |
+
+> 이 문서는 채용 제출을 위한 별도 포트폴리오입니다. [원본 코드](https://github.com/yeaun12/choi-bujang-secret-vault/tree/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88)의 확인된 구현을 소개하며, 모든 코드 링크는 동일한 커밋에 고정했습니다.
+
+## 1. 해결한 문제
+
+로그인 여부만으로 자료 접근을 허용하면 다른 사용자의 자료 조회나 요청 변조를 충분히 구분하기 어렵습니다. 보안 경보 역시 위험 신호 하나만으로 모두 차단하면 정상적인 작업까지 방해할 수 있습니다.
+
+이 프로젝트에서는 다음 두 문제를 다뤘습니다.
+
+- **접근 통제:** 누가, 어떤 기기로, 어떤 자원에 요청하는지 확인하고 허용·거부·추가 인증을 구분합니다.
+- **경보 분석:** 명확한 공격, 추가 확인이 필요한 상황, 정상 이벤트를 구분하고 판단 근거를 남깁니다.
+
+## 2. 본인의 역할과 AI 활용
+
+요구사항을 정상·금지 요청으로 나누고, 구현 방향과 수정 범위를 결정했습니다. ChatGPT를 코드 초안 작성과 오류 분석에 활용했으며, 제안된 내용을 과제 계약과 대조하고 로컬 실행·배포 환경의 결과를 확인하며 수정했습니다.
+
+- 사용자·기기·자원별 접근 조건을 정리하고 판정 규칙 및 API 보호 로직에 반영
+- 정상 요청과 권한 우회·변조 요청을 구분해 테스트
+- 오류 메시지와 HTTP 응답을 바탕으로 원인을 좁히고 수정 후 재검증
+- 기기 등록 전후 화면과 서명된 요청의 동작을 브라우저에서 확인
+- XDR 경보의 판단 조건과 근거를 정리하고 독립 실행 가능한 분류 로직으로 구현
+
+교육에서 제공된 SDP 엔진·인증 기반·요청 계약·합성 경보를 활용했습니다. 아래에 연결한 판정 규칙, API, 기기 검증, XDR 모듈과 테스트가 이 저장소에서 작업한 영역입니다. AI와 공동으로 개발한 결과이며, 제공 엔진 자체를 독자 개발한 것으로 설명하지 않습니다.
+
+## 3. 주요 구현
+
+### 사용자·기기·자원별 접근 통제
+
+등록되지 않은 기기는 거부하고, 허용된 HTTP 메서드와 경로만 처리합니다. 자원 경로 확인과 실제 자료 소유권 확인을 분리하여, API에서 저장된 소유자를 다시 검증하도록 구성했습니다.
+
+복합 이상 징후가 있는 요청에는 추가 인증을 요구합니다. 판정 결과는 `allow`, `deny`, `step_up`과 이유 코드로 반환해 판단 근거를 추적할 수 있도록 했습니다.
+
+**코드:** [접근 판정 규칙](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/src/decider.mjs) · [API 인증·권한 처리](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/src/resource-api-auth.mjs) · [요청·응답 계약](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/docs/DECIDER_REQUEST.md)
+
+### WebAuthn 기기 등록과 요청 변조 방지
+
+앱 설치나 클라이언트 상태만으로 기기를 신뢰하지 않고, 등록된 공개키로 요청 서명을 검증합니다. 서버가 발급한 일회용 challenge에 요청 메서드·경로·본문 해시를 연결하여 서명 이후의 요청 변경과 재사용을 확인합니다.
+
+브라우저에서는 기기 등록 전 개인 자료가 보이지 않는지, 등록과 서명 후 정상 요청이 처리되는지 확인했습니다. PWA의 오프라인 캐시는 공개 안내 자료로 제한했습니다.
+
+**코드:** [요청별 기기 증명](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/src/stage11-device-proof.mjs) · [WebAuthn 검증](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/src/stage11-webauthn.mjs) · [웹 화면](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/public/index.html)
+
+### 6종 XDR 경보 분류
+
+수업용 Wazuh 형식의 합성 경보를 대상으로 분류 로직을 작성했습니다.
+
+| 시나리오 | 검토하는 징후 |
+| --- | --- |
+| 무차별 로그인 | 짧은 시간에 반복되는 인증 실패 |
+| 웹 주입 공격 | 웹 요청에 포함된 주입 형태 |
+| 알려진 취약점 악용 | 취약점 악용 요청의 형태와 근거 |
+| 지속성 확보 | 서비스·예약 작업을 통한 실행 유지 |
+| 권한 상승 | 계정 권한 변경과 이례적인 권한 사용 |
+| 자료 유출 | 대량 외부 전송과 목적지·반복·시간대 맥락 |
+
+각 판정기는 `action`, `confidence`, `reason`을 반환합니다. `block`은 차단 판단, `alert`는 추가 검토, `record`는 기록으로 구분합니다. confidence는 규칙이 부여한 점수이며 학습 모델의 확률값이 아닙니다.
+
+판정 로직을 파일 처리와 후처리에서 분리해, 네트워크 호출 없이 개별 경보를 평가할 수 있도록 구성했습니다.
+
+**코드:** [XDR 모듈](https://github.com/yeaun12/choi-bujang-secret-vault/tree/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/xdr) · [경보 실행기](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/scripts/xdr-run.mjs) · [테스트](https://github.com/yeaun12/choi-bujang-secret-vault/tree/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/test)
+
+## 4. 대표 사례: 정상 전송을 유지하는 자료 유출 판단
+
+대용량 전송 하나만으로 자료 유출을 단정하지 않도록 했습니다. 전송량과 목적지, 파일 수, 반복 전송, 업무 외 시간 등 여러 근거를 함께 확인하고 승인된 백업 맥락을 구분합니다. 근거가 불충분한 이벤트는 검토 대상으로 남깁니다.
+
+로컬 후처리에서는 검증된 차단 판단에 대해 **계정·출발지·목적지가 일치하는 15분 만료형 차단 후보**를 생성합니다. 다른 계정이나 목적지의 통신과 분리하고, 동일 경보의 중복 등록을 방지합니다. 이는 로컬 시험용 차단 후보 관리 기능입니다.
+
+| 설계 판단 | 구현·검증 항목 |
+| --- | --- |
+| 단일 신호로 과도하게 차단하지 않기 | 복합 근거에 따른 block/alert/record 분류 |
+| 관련 없는 정상 통신 유지 | 계정·출발지·목적지 동시 대조 |
+| 판단 결과의 위조 방지 | 후처리 전에 원본 경보를 다시 판정 |
+| 차단 후보의 지속 시간 제한 | 15분 만료와 만료 후 해제 확인 |
+| 기록에 민감한 내용 최소화 | 경보 ID·이유·만료 시각 중심의 정제 로그 |
+
+**코드:** [자료 유출 판정](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/xdr/exfiltration/decide.mjs) · [로컬 후처리](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/xdr/exfiltration/respond.mjs) · [시나리오 테스트](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/test/xdr-exfiltration-bonus.test.mjs)
+
+## 5. 확인한 결과
+
+| 확인 대상 | 결과 | 근거와 범위 |
+| --- | --- | --- |
+| 자료 유출 경보 분류 | 30건 → block 10 / alert 10 / record 10 | 2026-10-23, 저장소 판정 코드와 원본 합성 경보를 Node.js v24.19.0에서 재실행 |
+| 기기 등록·서명 관련 회귀 검사 | 81/81 통과 | 개발 당시 Windows 실행 결과 기록. 이전 단계 테스트를 포함하는 묶음 |
+| 기기 등록 전후 자료 접근 | 등록 전 비노출, 등록·서명 후 정상 표시 확인 | 개발 당시 사용자 브라우저 확인 기록 |
+| 기기 서명 보호 과제 | 교육 평가 통과 | 서명 없는 요청 및 서명 후 경로·본문 변경 요청 차단을 인정받은 결과 |
+
+위 결과는 교육·합성 데이터와 명시된 시험 범위의 결과입니다. XDR의 block 분류와 로컬 차단 후보는 실제 운영 방화벽 집행을 의미하지 않습니다. 테스트 코드와 재현 명령을 함께 제공해 결과의 범위를 확인할 수 있도록 했습니다.
+
+## 6. 코드 탐색 및 재현
+
+| 확인할 내용 | 위치 |
+| --- | --- |
+| 사용자·기기·자원 접근 판정 | [src/decider.mjs](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/src/decider.mjs) |
+| 기기 등록과 요청 서명 확인 | [src/stage11-device-proof.mjs](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/src/stage11-device-proof.mjs) |
+| 자료·인증·사건 요약 API | [api/](https://github.com/yeaun12/choi-bujang-secret-vault/tree/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/api/) |
+| 데이터베이스 정책·기기 등록 구조 | [supabase/](https://github.com/yeaun12/choi-bujang-secret-vault/tree/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/supabase/) |
+| 6종 경보의 분류와 후처리 | [xdr/](https://github.com/yeaun12/choi-bujang-secret-vault/tree/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/xdr/) |
+| 정상·금지 요청 및 회귀 테스트 | [test/](https://github.com/yeaun12/choi-bujang-secret-vault/tree/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/test/) |
+| 상세 실행 명령 | [package.json](https://github.com/yeaun12/choi-bujang-secret-vault/blob/d346aa6d9d4fe0d24cef0005e5011059c5c3eb88/package.json) |
+
+Node.js 22 이상에서 아래 명령으로 로컬 테스트와 합성 경보 분류를 실행할 수 있습니다.
+
+```bash
+git clone https://github.com/yeaun12/choi-bujang-secret-vault.git
+cd choi-bujang-secret-vault
+git checkout d346aa6d9d4fe0d24cef0005e5011059c5c3eb88
+npm ci
+npm run decider:test
+npm run test:stage11
+npm run xdr:test
+npm run xdr:run -- exfiltration
+```
+
+자료 유출 분류 명령은 `xdr/exfiltration/result.json`을 생성합니다. 이는 원본 합성 경보를 판정한 로컬 결과입니다. 문서 작성 시 재확인한 항목은 표에 명시한 자료 유출 분류 30건이며, 나머지 결과는 개발 당시 기록에 근거합니다.
+
+---
+
+이 프로젝트를 통해 접근 통제를 기능으로 구현하는 경험과 함께, 정상 동작을 유지하면서 금지 요청을 검증하는 방법을 익혔습니다. AI가 제시한 코드를 요구사항과 실행 결과로 확인하고, 판단 근거를 코드·테스트로 연결한 작업입니다.
